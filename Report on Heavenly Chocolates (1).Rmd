@@ -1,0 +1,235 @@
+---
+title: "ReportOnHeavenlyChocolates"
+author: "Prabh Simran Kaur Talwar"
+date: "06/10/2021"
+output: 
+  pdf_document
+  
+header-includes:
+            \usepackage{graphicx,amsmath,caption,multicol}
+
+fontsize:
+        12pt 
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+HeavenlyChocolates <- read.csv("HeavenlyChocolates_2_.csv")
+head(HeavenlyChocolates,20)
+View(HeavenlyChocolates)
+```
+
+\newpage
+
+
+  \textbf{\large{Report on Heavenly Chocolates}}
+                           
+                           
+                            Graphical and Numerical Summaries   
+ 
+ 
+```{r}
+ ggplot(data = HeavenlyChocolates)+
+ geom_point(mapping = aes(x = HeavenlyChocolates$Pages.Viewed,
+                          y = HeavenlyChocolates$Time..min., 
+                          color = HeavenlyChocolates$Amount.Spent....))
+```
+                     
+
+```{r}
+ggplot(data = HeavenlyChocolates)+
+geom_histogram(mapping = aes( x = Pages.Viewed),
+               binwidth = 0.3, color = "black", fill = "orange")
+```
+
+
+```{r}
+ggplot(data = HeavenlyChocolates, mapping = aes(x = Time..min. ))+
+  geom_histogram(binwidth = 0.5, color = "blue", fill = "lightblue")
+```
+
+```{r}
+ggplot(data = HeavenlyChocolates)+
+geom_boxplot(mapping = aes(x = Customer , y = Amount.Spent....),
+             color = "black", fill = "light blue")
+```
+
+
+```{r}
+summarize(HeavenlyChocolates,
+          sum(Time..min.),
+          sum(Pages.Viewed),
+          mean(Amount.Spent....))
+```
+
+Total Time(min)     |  Total Pages Viewed   |  Mean Amount Spent  
+---:                |  ---:                 |  ---:                  
+640.5               |  241                  |  68.1282               
+
+
+
+The above table shows the total amount of time spent and the number of pages viewed  by the customers of Heavenly Chocolates which is 640.5 minutes  and 241 pages respectively. And, the average dollars spent by an individual customer is $ 68.1282. This concludes that the more time people spend  on the website and view more number of pages they are more likely to buy the product. In order to accomplish that online advertising is a good approach to go with. 
+
+
+\newpage
+
+```{r}
+summary(HeavenlyChocolates$Time..min.)
+```
+
+                         
+                         Numerical Summary of Time (min)
+
+Minimum      |  1st Quartile    |  Median       |  Mean      |  3rd Quartile     |  Maximum
+---:         |  ---:            |  ---:         | ---:       |  ---:             |  ---:
+4.30         |  8.65            |  11.40        |    12.81   |   14.90           | 32.90
+
+
+The above table explains, during the visit of shoppers on the web site the minimum amount of time spent by them is 4.30 minutes whereas the maximum amount of time spent by them is 32.90 minutes. The average time spent by each customer is 12.81 minutes. The median is the point at which exactly half of the data lies below and above the central value(50%), which in this data the median is 11.40 minutes. The quartile breaks down the data into quarters so that 25% of the data is less than the 1st quartile, and 75% are less than the 3rd quartile. The 1st and 3rd quartile in the above table is 8.65 and 14.90 minutes individually. 
+
+
+
+```{r}
+summary(HeavenlyChocolates$Pages.Viewed)
+```
+
+                         Numerical Summary of Pages Viewed
+
+
+
+Minimum      |  1st Quartile    |  Median       |  Mean      |  3rd Quartile     |  Maximum
+---:         |  ---:            |  ---:         | ---:       |  ---:             |  ---:
+2.00         |  3.25            |  4.50         |    4.82    |   6.00            | 10.00
+
+The above table explains the number of pages viewed by the shoppers on their online visit to the website. The minimum and maximum pages viewed by the customers is 2 and 10 repectively. The median is the point at which exactly half of the data lies below and above the central value(50%), which in this data the median is 4.50 pages viewed. The quartile breaks down the data into quarters so that 25% of the data is less than the 1st quartile, and 75% are less than the 3rd quartile. The 1st and 3rd quartile in the above table is 3.25 and 6.00 pages viewed individually. 
+
+
+
+```{r}
+summary(HeavenlyChocolates$Amount.Spent....)
+
+```
+
+
+                          Numerical Summary of Amount Spent
+
+
+
+Minimum      |  1st Quartile    |  Median       |  Mean      |  3rd Quartile     |  Maximum
+---:         |  ---:            |  ---:         | ---:       |  ---:             |  ---:
+17.84        |  45.56           |  62.15        |    68.13   |   82.73           | 158.51
+
+
+The above table explains, during the visit of shoppers on the web site the minimum amount spent by them is  17.84 dollars whereas the maximum amount spent by them is 158.51 dollars. The average dollars spent by each customer is 68.13 dollars.The median is the point at which exactly half of the data lies below and above the central value(50%), which in this data the median is 62.15 dollars. The quartile breaks down the data into quarters so that 25% of the data is less than the 1st quartile, and 75% are less than the 3rd quartile. The 1st and 3rd quartile in the above table is 45.56 and 82.73 dollars individually. 
+
+
+\newpage
+
+```{r}
+HeavenlyChocolates %>% group_by(Day)%>%
+  summarise(
+    frequency = n(),
+    total_dollars_spent = sum(Amount.Spent....),
+    mean_amount_spent_per_transaction = mean(Amount.Spent....)
+  )
+```
+                              
+                    Heavenly Chocolates' Business On Each Day Of Week
+
+Day      |  Frequency    |  Total Dollars Spent   |  Mean Amount Spent per Transaction
+:---     |  ---:         |  ---:                  |  ---:
+Fri      |  11           |  945.43                |  85.94818
+Mon      |  9            |  813.38                |  90.37556
+Sat      |  7            |  378.74                |  54.10571
+Sun      |  5            |  218.15                |  43.63000
+Thu      |  5            |  294.03                |  58.80600
+Tue      |  7            |  414.86                |  59.26571
+Wed      |  6            |  341.82                |  56.97000
+
+
+After observing the Heavenly Chocolates data based on the each day of the week, the above table depicts that the highest sales was recorded on Friday and the second highest sales was on Monday so the suggestion would be to send  offers or  emails or nudge customers about the product particularly on Fridays and Mondays as most of the sales was recorded on these days of the week.Advertising more so that more customers come to purchase the product. Moreover, On Sundays and Thursdays the sales was the lowest i.e. 5 on each day and the average amount spent by the shoppers on these two days was low so, to increase the sale provide discounts or buy 2 get 1 free offers to make people buy your product.
+
+
+```{r}
+HeavenlyChocolates %>% group_by(Browser)%>%
+  summarise(
+    frequency = n(),
+    total_dollars_spent = sum(Amount.Spent....),
+    mean_amount_spent_per_transaction = mean(Amount.Spent....)
+  )
+```
+
+                   Heavenly Chocolates' Business On The Type Of Browser
+
+Browser      |  Frequency    |  Total Dollars Spent   |  Mean Amount Spent per Transaction
+:---         |  ---:         |  ---:                  |  ---:
+Chrome       |  27           |  1656.81               |  61.36333
+Firefox      |  16           |  1228.21               |  76.76313
+Other        |  7            |  521.39                |  74.48429
+
+After observing the Heavenly Chocolates data based on the each type of the week, it suggests that as the chrome has been used the most by the shoppers i.e. 27,Using Online Advertising more on chrome will be good as more the people will the see the product, more the sale will increase. Also, other browser platforms showed very poor sales i.e 7, suggestion would be to spend less on the browsers which are least used by shoppers.
+
+
+\newpage
+
+
+      Relationship Between The Time Spent On The Website And The Dollar Amount Spent
+
+```{r}
+ggplot(data = HeavenlyChocolates, mapping = aes(x = Time..min., y = Amount.Spent....))+
+  geom_point()+
+  geom_smooth(se = FALSE)
+```
+
+```{r}
+cor(HeavenlyChocolates$Time..min., HeavenlyChocolates$Amount.Spent....)
+```
+
+The graph depicts the positive relationship between the time spent on the web site by shoppers and the amount spent by the shoppers. This means that the more people spend time on the web site online, the more they spend money during their visit. Also, the coefficient correlation between them is '0.5800476' which, states the moderate relation between time spent and amount spent.
+
+
+\newpage
+
+       Relationship Between The Number Of Pages Viewed And The Amount Spent
+
+```{r}
+ggplot(data = HeavenlyChocolates, mapping = aes(x = Pages.Viewed, y = Amount.Spent....))+
+  geom_point()+
+  geom_smooth(se = FALSE)
+```
+
+```{r}
+cor(HeavenlyChocolates$Pages.Viewed, HeavenlyChocolates$Amount.Spent....)
+```
+
+The graph depicts the positive relationship between the number of web pages viewed and the amount spent. This means that as online shoppers spend more time on the web site, they are more likely to spend money during their visit to be website. Also, the coefficient correlation between them is '0.7236669' which, states the strong relation between pages viewed and amount spent.
+
+\newpage
+
+
+      Relationship Between The Time Spent On The Website And The Number Of Pages Viewed
+
+
+```{r}
+ggplot(data = HeavenlyChocolates, mapping = aes(x = Pages.Viewed, y = Time..min.))+
+  geom_point(position = "jitter")+
+  geom_smooth(se = FALSE)
+
+```
+
+```{r}
+cor(HeavenlyChocolates$Pages.Viewed, HeavenlyChocolates$Time..min.)
+```
+
+The graph depicts the positive relationship between the time spent on the web site by shoppers and the number of pages viewed by shoppers. This means that the more people spend time on the web site online, the more pages they view over the internet. Also, the coefficient correlation between them is '0.5955675' which, states the moderate relation between time spent and pages viewed.
+
+
+
+
