@@ -1,0 +1,190 @@
+---
+title: "ML Assignment 2 - Decision Tree"
+author: "PrabhTalwar"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=FALSE, error=FALSE, warning=FALSE}
+# Helper packages
+library(dplyr) # for data wrangling
+library(ggplot2) # for awesome plotting
+
+# Modeling packages
+library(rpart) # direct engine for decision tree application
+library(caret) # meta engine for decision tree application
+library(rsample)
+library(randomForest) #For implementing random forest algorithm
+
+# Model interpretability packages
+library(rpart.plot) # for plotting decision trees
+library(vip) # for feature importance
+library(pdp) # for feature effects
+```
+
+
+```{r, show_col_types = FALSE}
+library(readr)
+winequality_red <- read_csv("winequality-red.csv")
+```
+
+```{r}
+str(winequality_red)
+```
+The above data set has 1599 rows and 12 columns where quality is our response variable. The data set has various chemical properties of the wine and will be building a decision tree to predict the quality of the wine. 
+
+Here, our response variable is read an integer whereas it should be a categorical/ factor variable for which we will use `as.factor` to convert numerical variable into factor variable.
+
+# Decision Tree
+
+
+```{r}
+table(winequality_red$quality) 
+
+winequality_red$quality <- as.factor(winequality_red$quality)
+str(winequality_red$quality) # converted into factor
+
+# converting into numerical to build the histogram
+quality <- as.numeric(winequality_red$quality) 
+hist(quality)
+
+levels(winequality_red$quality)
+```
+
+
+```{r}
+# Using rsample package
+set.seed(123) # for reproducibility
+
+# Splitting the data in a 80-20 split
+split_wine <- initial_split(winequality_red, prop = 0.8)
+train_wine <- training(split_wine)
+test_wine <- testing(split_wine)
+
+```
+
+```{r}
+
+wine_dt <- rpart(formula = quality ~ ., data = train_wine, method = "class")
+wine_dt
+
+rpart.plot(wine_dt, type = 3, extra = 4, tweak = 0.9) 
+```
+
+In the above decision tree the leaves display the Probability per class. For example, the leaf to the most left tells that the quality of wine with alcohol and total sulfur dioxide is 5 with giving probability for each class 3(0.00), 4(0.01), 5(0.92), 6(0.07), 7(0.00) and 8(0.00).
+
+
+```{r}
+# Prediction
+predict_train <- predict(wine_dt, train_wine, type = "class")
+
+# Classification on training data
+table_wine <- table(train_wine$quality, predict_train)
+table_wine
+
+confusionMatrix(predict_train, train_wine$quality)
+
+accuracy_Test <- sum(diag(table_wine)) / sum(table_wine)
+accuracy_Test
+```
+
+The accuracy for the training data is 0.6075.
+```{r}
+# Prediction
+predict_test <- predict(wine_dt, test_wine, type = "class")
+
+# Classification on test data
+table_wine_test <- table(test_wine$quality, predict_test)
+table_wine_test
+
+accuracy_Test1 <- sum(diag(table_wine_test)) / sum(table_wine_test)
+accuracy_Test1
+```
+The accuracy for the testing data is 0.5938. Here, we can say that our model is not overfitted.
+
+
+
+# Random Forest
+
+```{r}
+Wine_Data <- read_csv("winequality-red.csv")
+```
+
+
+```{r}
+barplot(table(Wine_Data$quality))
+
+str(Wine_Data$quality)
+Wine_Data$quality <- as.numeric(Wine_Data$quality)
+
+str(Wine_Data$quality)
+class(Wine_Data$quality)
+
+
+Wine_Data$taste <- ifelse(Wine_Data$quality < 5, "BAD", "GOOD")
+Wine_Data$taste[Wine_Data$quality == 5] <- "NORMAL"
+Wine_Data$taste[Wine_Data$quality == 6] <- "NORMAL"
+Wine_Data$taste <- as.factor(Wine_Data$taste)
+
+ggplot(data = Wine_Data, aes(x = taste))+
+  geom_bar()
+
+```
+
+
+```{r}
+# Using rsample package
+set.seed(123) # for reproducibility
+
+# Splitting the data in a 80-20 split
+split_wine1 <- initial_split(Wine_Data, prop = 0.8)
+train_wine1 <- training(split_wine1)
+test_wine1 <- testing(split_wine1)
+
+```
+
+```{r}
+
+wine_rf <- randomForest(taste ~ . -quality, data = train_wine1)
+wine_rf
+
+```
+
+```{r}
+# Prediction
+prediction_train <- predict(wine_rf, newdata = train_wine1)
+
+# Classification on training data
+predtable <- table(prediction_train, train_wine1$taste) 
+predtable
+
+wine_rf$confusion
+
+accuarcy <- sum(diag(predtable))/nrow(train_wine1) 
+accuarcy
+```
+The accuracy for the training data is 1.
+
+
+```{r}
+# Prediction
+prediction <- predict(wine_rf, newdata = test_wine1)
+
+# Classification on test data
+predtable1 <- table(prediction, test_wine1$taste) 
+predtable1
+
+wine_rf$confusion
+```
+
+```{r}
+
+accuarcy1 <- sum(diag(predtable1))/nrow(test_wine1) 
+accuarcy1
+```
+The accuracy for the training data is 0.896875.
+
