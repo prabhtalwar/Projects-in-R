@@ -1,0 +1,119 @@
+---
+title: "ML-Assignment-3 - Gradient Boosting"
+author: "PrabhTalwar"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, warning=FALSE, message=FALSE, error=FALSE}
+library(dplyr) # for general data wrangling needs
+# Modeling packages
+library(rsample)      # data splitting 
+library(caret)
+library(recipes)
+library(gbm) # original implementation of regular & stochastic GBMs
+library(xgboost) # for fitting extreme gradient boosting
+```
+
+```{r}
+iris_data <- iris  
+summary(iris_data)     
+dim(iris_data)
+```
+
+```{r}
+set.seed(123)
+iris_split <- initial_split(iris_data, prop = 0.7)
+iris_train <- training(iris_split)
+iris_test  <- testing(iris_split)
+```
+
+# Gradient Boosting
+
+```{r}
+set.seed(123) # for reproducibility
+gb_model <- gbm(Species ~., data = iris_train,
+                 n.trees = 1000, 
+                 shrinkage = 0.01,
+                 interaction.depth = 3,
+                 n.minobsinnode = 10,
+                 cv.folds = 10)
+
+print(gb_model)
+summary(gb_model)
+```
+we can see that Petal.Length and Petal.Width	are by far the most important variables in our gbm model.
+
+```{r}
+# find index for number trees with minimum CV error
+best <- which.min(gb_model$cv.error)
+best
+
+# get MSE and compute RMSE
+sqrt(gb_model$cv.error[best])
+
+
+# plot error curve
+gbm.perf(gb_model, method = "cv")
+
+```
+
+Our results show a cross-validated SSE of 0.3770093 which was achieved with 238
+trees.
+
+```{r}
+pred_test = predict.gbm(object = gb_model,
+                   newdata = iris_test,
+                   n.trees = 1000,           
+                   type = "response")
+
+
+```
+
+```{r}
+# Give class names to the highest prediction value.
+class_names = colnames(pred_test)[apply(pred_test, 1, which.max)]
+result = data.frame(iris_test$Species, class_names)
+ 
+```
+
+
+```{r}
+confusion_matrix <- confusionMatrix(iris_test$Species, as.factor(class_names))
+print(confusion_matrix)
+```
+
+# XGBoost
+
+```{r}
+xgb_prep <- recipe(Species ~ ., data = iris_train) %>%
+ step_integer(all_nominal()) %>%
+ prep(training = iris_train, retain = TRUE) %>%
+ juice()
+X <- as.matrix(xgb_prep[setdiff(names(xgb_prep), "Species")])
+Y <- xgb_prep$Species 
+```
+
+```{r}
+set.seed(123)
+ames_xgb <- xgb.cv(data = X, label = Y,
+                   nrounds = 1000,
+                   n.minobsinnode = 10,
+                   early_stopping_rounds = 50,
+                   nfold = 10,
+                   params = list(eta = 0.01,
+                                 max_depth = 3,
+                                 min_child_weight = 3,
+                                 subsample = 0.5,
+                                 colsample_bytree = 1.0),
+                   verbose = 0)
+
+# minimum test CV RMSE
+min(ames_xgb$evaluation_log$test_rmse_mean)
+
+```
+
