@@ -1,0 +1,911 @@
+---
+title: "Final Project"
+author: "Prabh Talwar (300327180)"
+date: "17/04/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+library(tidyverse)
+library(readr)
+library(caret)
+library(recipes)
+library(visdat)
+library(psych)
+library(tidyverse)
+library(rsample)
+library(reshape2)
+library(gmodels)
+library(Hmisc)
+library(corrplot)
+library(class) 
+library(ROCR)
+library(gridExtra)
+library(knitr) 
+library(dataMaid)
+library(factoextra)
+library(fpc)
+library(dendextend)
+library(stats)
+library(cluster)
+library(fastDummies)
+
+
+```
+
+# Introduction
+
+The Loan Application data set has 21 variables and 1000 observations.The type of variables in this data set are nominal, ordinal and numeric. There is no missing data in this data set. The data set contains the credit information, checking balance, saving balance of the customers, amount of loan they requested, purpose of loan, age, personal status and there are other variables in it. The analysis is conducted to know the type of customers comes to the bank for asking the loan and what is the probability of making the default in the payment by the customers based on the personal information, loan amount provided and the factors that affects the default rate.
+
+
+# Body
+
+To determine our typical type of customers from this data set, Clustering method is being used to group the customers based on their similarity. While examining the data set, it can be said that data need to be cleaned as it has mixed variables both numerical and categorical. To convert our ordinal categorical data into numerical variable, label encoding has been done. And, dummy encoded in the excel as to perform the clustering, our data should have numerical variables. However, it increased the dimensions of the data set. So the method that can be used to cluster the data is the PAM method (Partitioning Around Medoids) using the Gowers distance and silhouette width. Gowers distance is a metrics which finds the distance in the data set in which the variables are numerical and categorical. In order to use PAM method the original data has been used without any cleaning and to know  our main types of customers from this data set, selecting the most important variables is necessary. So, the variables been removed are foreign worker as this variables has the near zero variance which is not useful for our analysis, land Line and saving balance.
+
+`daisy` function is a part of the cluster package. This function is used when the data variables in a our data set are not in same format i.e, numeric, nominal and ordinal. `daisy` function returns a distance matrix and K-means cannot be applied on the output of daisy function because K-means cannot cluster the data based on the distance matrix. The two options left are Kmedoids (PAM) and Hierarchical clustering. When used the Hierarchical clustering the dendrogram came out to be cluttered and didn't provided any useful information. `daisy` function uses the `gower`measure to calculate the distance. When any data is presented to the `daisy` function, it looks for the type of data in the data set if it finds the mixed data as our data set we are working on, it automatically selects the `gowers` measure to find the distance and it applies a suitable distance measure considering our data types. For instance, to convert our numerical data manhattan distance is used to calculate the distance and for ordinal data, converts into ranks and then uses the manhattan distance. 
+
+
+
+
+# Conclusion
+
+So, the output generated tells about the two clusters in which the type of customers falls into cluster 1 has the following characteristics: they are single, their average age is 28, requested amount is `$2284`, purpose of loan is electronics/home entertainment, the duration is 24 months, their credit history says repaid, they are skilled workers and have been employed for 4 - 7 years, their installment rate is quaterly, they have no other debtors, they have 1 loan pending, they have  1 dependent and their checking balance is `< $0`, they live in their own housing, they have been living in the present residence since 2 months and they don't have any installment plan
+
+
+The type of customers falls into cluster 2 has the following characteristics: they are in common law, their average age is 29, requested amount is `$3959`, purpose of loan is 	new vehicle, the duration is 15 months, their credit history says repaid, they are skilled workers and have been employed for 1 - 4 years, their installment rate is 3 months, they have no other debtors, they have 1 loan pending, they have  1 dependent and their checking balance is unknown, they live in their own housing, they have been living in the present residence since 2 months, they don't have any installment plan and they have building society savings as a property
+
+
+
+
+# Appendix
+
+```{r, message=FALSE, warning=FALSE}
+# Loading the data set
+LoanApplicationData <- read.csv("LoanApplicationData.csv", stringsAsFactors = TRUE)
+
+```
+
+
+## Exploratory Data Analysis
+
+### Identifying the Variables
+
+The Loan Application data set has 21 variables and 1000 observations.The type of variables in this data set are nominal, ordinal and numeric.
+
+```{r}
+#makeDataReport(LoanApplicationData)
+```
+
+
+### checking\_balance
+
+-------------------------------------
+Feature                        Result
+------------------------- -----------
+Variable type               character
+
+Number of missing obs.        0 (0 %)
+
+Number of unique values             4
+
+Mode                        "unknown"
+-------------------------------------
+
+### months\_loan\_duration
+
+-----------------------------------
+Feature                      Result
+------------------------- ---------
+Variable type               numeric
+
+Number of missing obs.      0 (0 %)
+
+Number of unique values          33
+
+Median                           18
+
+1st and 3rd quartiles        12; 24
+
+Min. and max.                 4; 72
+-----------------------------------
+
+### existing\_credit\_history
+
+-------------------------------------
+Feature                        Result
+------------------------- -----------
+Variable type               character
+
+Number of missing obs.        0 (0 %)
+
+Number of unique values             5
+
+Mode                         "repaid"
+-------------------------------------
+
+
+```{r, fig.show="hold",  out.width="33.33%", warning=FALSE, message=FALSE}
+ggplot(LoanApplicationData, aes(x = checking_balance))+
+  geom_bar(fill = "royalblue4",color = "royalblue4")
+
+ggplot(LoanApplicationData, aes(x = months_loan_duration))+
+  geom_histogram(fill = "royalblue4",color= "royalblue4")
+
+ggplot(LoanApplicationData, aes(x = existing_credit_history))+
+  geom_bar(fill = "royalblue4",color= "royalblue4")
+
+```
+
+The above graph shows the the checking balance for around 400 customers is  unknown and for some is less than `$0` and between `$1 - $1000`. The credit history for around 500 customers says to be repaid the loan and for 293 customers it says is critical. The loan duration ranges between 4 months to 72 months.
+
+### purpose\_of\_loan
+
+------------------------------------------------------------
+Feature                                               Result
+------------------------- ----------------------------------
+Variable type                                      character
+
+Number of missing obs.                               0 (0 %)
+
+Number of unique values                                   10
+
+Mode                        "electronics/home entertainment"
+------------------------------------------------------------
+
+### requested\_amount
+
+-------------------------------------------
+Feature                              Result
+------------------------- -----------------
+Variable type                       numeric
+
+Number of missing obs.              0 (0 %)
+
+Number of unique values                 921
+
+Median                               2319.5
+
+1st and 3rd quartiles       1365.5; 3972.25
+
+Min. and max.                    250; 18424
+-------------------------------------------
+
+### savings\_balance
+
+-------------------------------------
+Feature                        Result
+------------------------- -----------
+Variable type               character
+
+Number of missing obs.        0 (0 %)
+
+Number of unique values             5
+
+Mode                         "< $500"
+-------------------------------------
+
+
+```{r, fig.show="hold",  out.width="33.33%"}
+ggplot(LoanApplicationData, aes(x = purpose_of_loan))+
+  geom_bar(fill = "royalblue4",color= "royalblue4")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+ggplot(LoanApplicationData, aes(x = requested_amount))+
+  geom_density(fill = "royalblue4",color= "royalblue4")
+
+ggplot(LoanApplicationData, aes(x = savings_balance))+
+  geom_bar(fill = "royalblue4",color= "royalblue4")
+
+```
+
+The above graphs tells that the purpose for loan for most customers is for electronics/home entertainment, new vehicle and furniture. The requested amount for loan ranges between `$250 to $18424` and around 7500 customers' saving balance is less than $500.
+
+### employment\_length
+
+---------------------------------------
+Feature                          Result
+------------------------- -------------
+Variable type                 character
+
+Number of missing obs.          0 (0 %)
+
+Number of unique values               5
+
+Mode                        "1 - 4 yrs"
+---------------------------------------
+
+### installment\_rate
+
+-----------------------------------
+Feature                      Result
+------------------------- ---------
+Variable type               numeric
+
+Number of missing obs.      0 (0 %)
+
+Number of unique values           4
+
+Mode                            "4"
+
+Reference category                1
+-----------------------------------
+
+### personal\_status
+
+-------------------------------------
+Feature                        Result
+------------------------- -----------
+Variable type               character
+
+Number of missing obs.        0 (0 %)
+
+Number of unique values             4
+
+Mode                         "single"
+-------------------------------------
+
+
+```{r, fig.show="hold",  out.width="33.33%"}
+ggplot(LoanApplicationData, aes(x = employment_length))+
+  geom_bar(fill = "royalblue4",color= "royalblue4")
+
+ggplot(LoanApplicationData,aes(x = installment_plan))+
+  geom_bar(fill = "royalblue4",color= "royalblue4")
+
+ggplot(LoanApplicationData, aes(x = personal_status))+
+  geom_bar(fill = "royalblue4",color= "royalblue4")
+
+```
+
+The above graphs shows that 548 number of the bank customers are single and the data says that the customers who are unemployed are 62 and rest of them are all employed.The installment plans are bank and stores, 814 customers don't have any installment.
+
+### other\_debtors
+
+-------------------------------------
+Feature                        Result
+------------------------- -----------
+Variable type               character
+
+Number of missing obs.        0 (0 %)
+
+Number of unique values             3
+
+Mode                           "none"
+-------------------------------------
+
+
+### residence\_history
+
+-----------------------------------
+Feature                      Result
+------------------------- ---------
+Variable type               numeric
+
+Number of missing obs.      0 (0 %)
+
+Number of unique values           4
+
+Mode                            "4"
+
+Reference category                1
+-----------------------------------
+
+### property
+
+-------------------------------------
+Feature                        Result
+------------------------- -----------
+Variable type               character
+
+Number of missing obs.        0 (0 %)
+
+Number of unique values             4
+
+Mode                          "other"
+-------------------------------------
+
+```{r, fig.show="hold",  out.width="33.33%"}
+ggplot(LoanApplicationData, aes(x = other_debtors))+
+  geom_bar(fill = "royalblue4",color= "royalblue4")
+
+ggplot(LoanApplicationData, aes(x = residence_history))+
+  geom_bar(fill = "royalblue4",color= "royalblue4")
+
+ggplot(LoanApplicationData, aes(x = property))+
+  geom_bar(fill = "royalblue4",color= "royalblue4")
+```
+
+More than 800 customers don't have any other debtors, around 250 customers own a real estate as a property and around 150 customers don't have any property. The data set says the residence history for the most number od customers is 4 years and 2 years.
+
+### age
+
+-----------------------------------
+Feature                      Result
+------------------------- ---------
+Variable type               numeric
+
+Number of missing obs.      0 (0 %)
+
+Number of unique values          53
+
+Median                           33
+
+1st and 3rd quartiles        27; 42
+
+Min. and max.                19; 75
+-----------------------------------
+
+### installment\_plan
+
+-------------------------------------
+Feature                        Result
+------------------------- -----------
+Variable type               character
+
+Number of missing obs.        0 (0 %)
+
+Number of unique values             3
+
+Mode                           "none"
+-------------------------------------
+
+
+### housing
+
+-------------------------------------
+Feature                        Result
+------------------------- -----------
+Variable type               character
+
+Number of missing obs.        0 (0 %)
+
+Number of unique values             3
+
+Mode                            "own"
+-------------------------------------
+
+
+```{r, fig.show="hold",  out.width="33.33%", warning=FALSE, message=FALSE}
+ggplot(LoanApplicationData, aes(x = age))+
+  geom_histogram(fill = "royalblue4",color= "royalblue4")
+
+ggplot(LoanApplicationData, aes(x = installment_plan))+
+  geom_bar(fill = "royalblue4",color= "royalblue4")
+
+ggplot(LoanApplicationData, aes(x = housing))+
+  geom_bar(fill = "royalblue4",color= "royalblue4")
+```
+The age group customers fall into ranges between 19-75 year old. About 800 customers don't have any installment plans the rest of the customers have bank and stores as their installment plans and around 700 borrowers owns housing which is the highest and around 180 customers have rental housing.
+
+### existing\_loans
+
+-----------------------------------
+Feature                      Result
+------------------------- ---------
+Variable type               numeric
+
+Number of missing obs.      0 (0 %)
+
+Number of unique values           4
+
+Mode                            "1"
+
+Reference category                1
+-----------------------------------
+
+
+### default
+
+-----------------------------------
+Feature                      Result
+------------------------- ---------
+Variable type               numeric
+
+Number of missing obs.      0 (0 %)
+
+Number of unique values           2
+
+Mode                            "1"
+
+Reference category                1
+-----------------------------------
+
+
+### dependents
+
+-----------------------------------
+Feature                      Result
+------------------------- ---------
+Variable type               numeric
+
+Number of missing obs.      0 (0 %)
+
+Number of unique values           2
+
+Mode                            "1"
+
+Reference category                1
+-----------------------------------
+
+
+
+```{r, fig.show="hold",  out.width="33.33%"}
+ggplot(LoanApplicationData, aes(x = existing_loans))+
+  geom_bar(fill = "royalblue4",color= "royalblue4")
+
+ggplot(LoanApplicationData, aes(x = default))+
+  geom_bar(fill = "royalblue4",color= "royalblue4")
+
+ggplot(LoanApplicationData, aes(x = dependents))+
+  geom_bar(fill = "royalblue4",color= "royalblue4")
+```
+
+
+
+Most of the customers have only 1 dependent i.e. 845, and 700 customers have made the default and 300 have no default history. 633 customers have 1 existing loan and 333 customers have 2 existing loans.
+
+### landline
+
+-------------------------------------
+Feature                        Result
+------------------------- -----------
+Variable type               character
+
+Number of missing obs.        0 (0 %)
+
+Number of unique values             2
+
+Mode                           "none"
+-------------------------------------
+
+
+### foreign\_worker
+
+-------------------------------------
+Feature                        Result
+------------------------- -----------
+Variable type               character
+
+Number of missing obs.        0 (0 %)
+
+Number of unique values             2
+
+Mode                            "yes"
+-------------------------------------
+
+
+### job
+
+
+----------------------------------------------
+Feature                                 Result
+------------------------- --------------------
+Variable type                        character
+
+Number of missing obs.                 0 (0 %)
+
+Number of unique values                      4
+
+Mode                        "skilled employee"
+----------------------------------------------
+
+
+```{r, fig.show="hold",  out.width="33.33%"}
+ggplot(LoanApplicationData, aes(x = landline))+
+  geom_bar(fill = "royalblue4",color= "royalblue4")
+
+ggplot(LoanApplicationData, aes(x = foreign_worker))+
+  geom_bar(fill = "royalblue4",color= "royalblue4")
+
+ggplot(LoanApplicationData, aes(x = job))+
+  geom_bar(fill = "royalblue4",color= "royalblue4")
+```
+
+963 customers are foreign workers in which 22 customers are unemployed, 630 are skilled employees whereas, 200 are unskilled employees. 
+
+## Clustering
+
+To know about our typical customer, clustering algorithm is used to group borrowers on the bases of their similar characteristics or features. And to cluster customers, the relevant variables have been selected from the data set. Our loan application data set have both numerical and categorical variables.
+
+```{r}
+LoanData <- read_csv("LoanData.csv")
+View(LoanData)
+```
+
+While examining the data set, it can be said that data need to be cleaned as it has mixed variables both numerical and categorical. To convert our ordinal categorical data into numerical variable, label encoding has been done. And, the above data has been dummy encoded in the excel as to perform the clustering as our data should have numerical variables.The dummy encoding has been done to convert our nominal data variables. The variables that have been treated ordinal are `checking_balance`, `savings_balance` and `employment_length`.
+
+```{r}
+#Label encoding ordinal data variables
+
+LoanData$checking_balance <- factor(LoanData$checking_balance,
+                                    levels = c("< $0",
+                                               "$1 - $1000",
+                                               "> $1000",
+                                               "unknown"),
+                                    ordered = TRUE)
+
+LoanData$checking_balance <- as.numeric(LoanData$checking_balance)
+
+LoanData$savings_balance <- factor(LoanData$savings_balance,
+                                    levels = c("< $500",
+                                               "$501 - $1000",
+                                               "$1001 - $2000",
+                                               "> $2000",
+                                               "unknown"),
+                                    ordered = TRUE)
+
+LoanData$savings_balance <- as.numeric(LoanData$savings_balance)
+
+LoanData$employment_length <- factor(LoanData$employment_length,
+                                     levels = c("unemployed", 
+                                                "0 - 1 yrs",
+                                                "1 - 4 yrs",
+                                                "4 - 7 yrs",
+                                                "> 7 yrs"),
+                                     ordered = TRUE)
+
+LoanData$employment_length <- as.numeric(LoanData$employment_length)
+
+#View(LoanData)
+```
+
+
+
+```{r}
+# Scaling the data
+
+Scaled_Loan_Data <- scale(LoanData)
+```
+
+As the data has been cleaned and the variables are now converted into numeric variables, clustering has been performed and graphed the elbow plot to determine the number of clusters.
+The method used for clustering is K-means, here clusters are represented by its center i.e, centroid.
+
+```{r}
+# Estimating the optimal number of clusters
+
+fviz_nbclust(Scaled_Loan_Data, kmeans, method = "wss")
+```
+
+
+As we can see, the elbow plot failed to show the number of clusters to use in the clustering, as in our data the number of dimensions are large , so the other method that can be used to cluster the data is the PAM method (Partitioning Around Medoids) using the Gowers distance and silhouette width. Gowers distance is a metrics which finds the distance in the data set in which the variables are numerical and categorical. In order to use PAM method the original data has been used without any cleaning.
+
+
+In order to know  our main types of customers from this data set, selecting the most important variables is necessary. So, the variables been removed are foreign worker as this variables has the near zero variance which is not useful for our analysis, land Line and saving balance.
+
+
+```{r}
+LoanApplication <- LoanApplicationData %>%
+  select(checking_balance, months_loan_duration, existing_credit_history, 
+         purpose_of_loan, requested_amount, employment_length,
+         installment_rate, personal_status, other_debtors, residence_history, 
+         property, age, installment_plan, housing, existing_loans, default, 
+         dependents, job)
+```
+
+```{r}
+#Label encoding ordinal data variables
+
+LoanApplication$checking_balance <- factor(LoanApplication$checking_balance,
+                                    levels = c("< $0",
+                                               "$1 - $1000",
+                                               "> $1000",
+                                               "unknown"),
+                                    ordered = TRUE)
+
+
+LoanApplication$employment_length <- factor(LoanApplication$employment_length,
+                                     levels = c("unemployed", 
+                                                "0 - 1 yrs",
+                                                "1 - 4 yrs",
+                                                "4 - 7 yrs",
+                                                "> 7 yrs"),
+                                     ordered = TRUE)
+
+
+```
+
+
+```{r}
+LoanApplication$default <- as.factor(LoanApplication$default)
+```
+
+
+```{r}
+str(LoanApplication)
+```
+
+```{r, warning=FALSE}
+gower_loan <- daisy(LoanApplication,
+                    metric = "gower" ,
+                    type = list(logratio = 2))
+
+summary(gower_loan)
+```
+
+`daisy` function is a part of the cluster package. This function is used when the data variables in a our data set are not in same format i.e, numeric, nominal and ordinal. `daisy` function returns a distance matrix and K-means cannot be applied on the output of daisy function because K-means cannot cluster the data based on the distance matrix. The two options left are Kmedoids (PAM) and Hierarchical clustering. When used the Hierarchical clustering the dendrogram came out to be cluttered and didn't provided any useful information. 
+
+`daisy` function uses the `gower`measure to calculate the distance. When any data is presented to the `daisy` function, it looks for the type of data in the data set if it finds the mixed data as our data set we are working on, it automatically selects the `gowers` measure to find the distance and it applies a suitable distance measure considering our data types. For instance, to convert our numerical data manhattan distance is used to calculate the distance and for ordinal data, converts into ranks and then uses the manhattan distance.
+
+```{r}
+fviz_nbclust(as.matrix(gower_loan), pam, method = "silhouette") +
+theme_classic()
+```
+
+From the above plot, it can be said that the optimal number of clusters are two and we can classify the observations into two clusters.
+
+
+```{r}
+
+clusters = pam(as.matrix(gower_loan), # Converting Gower dissimilarity into a distance matrix
+               diss = TRUE,
+               stand = FALSE,
+               k = 2)
+```
+
+```{r}
+LoanApplication[clusters$medoids, ]
+
+```
+
+So, the output generated tells about the two clusters in which the type of customers falls into cluster 1 has the following characteristics: they are single, their average age is 28, requested amount is `$2284`, purpose of loan is electronics/home entertainment, the duration is 24 months, their credit history says repaid, they are skilled workers and have been employed for 4 - 7 years, their installment rate is quaterly, they have no other debtors, they have 1 loan pending, they have  1 dependent and their checking balance is `< $0`, they live in their own housing, they have been living in the present residence since 2 months and they don't have any installment plan
+
+
+The type of customers falls into cluster 2 has the following characteristics: they are in common law, their average age is 29, requested amount is `$3959`, purpose of loan is 	new vehicle, the duration is 15 months, their credit history says repaid, they are skilled workers and have been employed for 1 - 4 years, their installment rate is 3 months, they have no other debtors, they have 1 loan pending, they have  1 dependent and their checking balance is unknown, they live in their own housing, they have been living in the present residence since 2 months, they don't have any installment plan and they have building society savings as a property
+
+
+## Logistic Regression
+
+To estimate the probability of default, we will be using logistic regression. 
+
+```{r, message=FALSE, warning=FALSE}
+# Loading the data set
+LoanApplicationData <- read.csv("LoanApplicationData.csv", stringsAsFactors = TRUE)
+
+```
+
+```{r}
+nearZeroVar(LoanApplicationData, saveMetrics= TRUE) %>%
+rownames_to_column() %>%
+filter(nzv)
+
+```
+
+As the foreign worker has near zero variance, it has been removed from the data set, as it does not provides any useful information to a model.
+
+
+```{r}
+# Removing the foreign worker variable
+LoanApplicationData <- LoanApplicationData[-20]
+head(LoanApplicationData)
+```
+
+
+
+```{r}
+#Label encoding ordinal data variables
+
+LoanApplicationData$checking_balance <- factor(
+  LoanApplicationData$checking_balance,
+  levels = c("< $0",
+             "$1 - $1000",
+             "> $1000",
+             "unknown"),
+  ordered = TRUE)
+
+LoanApplicationData$checking_balance <- as.numeric(
+  LoanApplicationData$checking_balance)
+  
+LoanApplicationData$savings_balance <- factor(
+  LoanApplicationData$savings_balance,
+  levels = c("< $500",
+             "$501 - $1000",
+             "$1001 - $2000",
+             "> $2000",
+             "unknown"),
+  ordered = TRUE)
+
+LoanApplicationData$savings_balance <- as.numeric(
+  LoanApplicationData$savings_balance)
+
+
+
+
+LoanApplicationData$employment_length <- factor(
+  LoanApplicationData$employment_length,
+  levels = c("unemployed", 
+             "0 - 1 yrs",
+             "1 - 4 yrs",
+             "4 - 7 yrs",
+             "> 7 yrs"),
+  ordered = TRUE)
+
+LoanApplicationData$employment_length <- as.numeric(
+  LoanApplicationData$employment_length)
+
+
+```
+
+
+```{r}
+# Dummy encoding nominal data variables
+
+LoanApplicationData <- dummy_cols(LoanApplicationData,
+                                  select_columns = c("existing_credit_history",
+                                                     "purpose_of_loan",
+                                                     "personal_status",
+                                                     "other_debtors",
+                                                     "property",
+                                                    "installment_plan",
+                                                    "housing",
+                                                    "landline",
+                                                    "job"),
+                                  remove_first_dummy =TRUE ,
+                                  remove_selected_columns = TRUE)
+
+
+```
+
+
+```{r}
+# scaling the data
+scaled_data <- scale(LoanApplicationData[-10]) # removing the response variable
+
+LoanApplicationData2 <- cbind(scaled_data , 
+                              default = LoanApplicationData$default)
+
+LoanApplicationData2 <- as.data.frame(LoanApplicationData2)
+
+
+```
+
+```{r}
+# Re code class to 1 = No, 2 = Yes
+LoanApplicationData2$default[LoanApplicationData2$default == 1 ] <- "No"
+LoanApplicationData2$default[LoanApplicationData$default == 2 ] <- "Yes"
+
+LoanApplicationData2$default <- as.factor(LoanApplicationData2$default)
+
+
+```
+
+```{r}
+set.seed(123) #for reproducibility
+
+#splitting the data
+loan_split <- initial_split(LoanApplicationData2, prop = 0.8)
+
+loan_train <- training(loan_split)
+loan_test <- testing(loan_split)
+```
+
+
+```{r}
+# Logistic Regression Model
+
+model <- glm(default ~ . , data = loan_train,  family = "binomial")
+
+summary(model)
+```
+
+From the above model, it seems not all variables are statistically significant, lets build another model with just the variables that are statistically significant.
+
+```{r}
+model1 <- glm(default ~ checking_balance +
+                months_loan_duration +
+                requested_amount +
+                savings_balance +
+                installment_rate +
+                existing_credit_history_delayed +
+                `existing_credit_history_fully repaid`+ 
+                `existing_credit_history_fully repaid this bank` +
+                existing_credit_history_repaid +
+                `purpose_of_loan_domestic appliances` +
+                purpose_of_loan_education +
+                `purpose_of_loan_electronics/home entertainment`+
+                purpose_of_loan_furniture +
+                `purpose_of_loan_new vehicle`+
+                purpose_of_loan_others +
+                purpose_of_loan_repairs +
+                purpose_of_loan_retraining +
+                `purpose_of_loan_used vehicle`+
+                personal_status_divorced +
+                personal_status_married +
+                personal_status_single +
+                other_debtors_guarantor+
+                other_debtors_none,                                  
+                data = loan_train, family = "binomial")
+
+summary(model1)
+```
+
+```{r}
+#Prediction
+
+prediction <- predict(model1, loan_train, type = "response")
+
+head(prediction)
+head(loan_train$default)
+```
+
+Here, for the first prediction the model says there is probability of default is 0.5604768 and the prediction is correct. For the second prediction, the model says the probability of default is 0.3734891 and the prediction is correct as well.
+
+```{r}
+#Misclassification error-train data
+
+pred1 <- ifelse(prediction > 0.5, "Yes", "No")
+
+table <- table(predicted = pred1, Actutal = loan_train$default) # confusion matrix
+table
+
+sum(diag(table))/ sum(table)
+```
+
+The above confusion matrix explains that in actual the customers with probability of default are 230 and the model predicted 105 correctly, the patients with no probability of default are 570 and the model predicted 510 correctly.The accuracy of the model is 76.8%
+
+
+
+```{r}
+#mutating the probability of default in to the original data
+model_prob <- predict(model1, LoanApplicationData2, type = "response")
+
+LoanApplicationData2$Prob_of_Default <- model_prob
+
+```
+
+```{r}
+#default probability buckets
+
+LoanApplicationData2 <- LoanApplicationData2 %>%
+  mutate(POD = case_when(Prob_of_Default < 0.25 ~ "Low",
+                         Prob_of_Default > 0.65 ~ "High", TRUE ~ "Medium"))
+
+
+LoanApplicationData2$POD <- factor(LoanApplicationData2$POD,
+                                   levels = c("Low", "Medium", "High"),
+                                   ordered = TRUE)
+
+
+LoanApplicationData2$POD <- as.numeric(LoanApplicationData2$POD)
+table(LoanApplicationData2$POD)
+
+```
+The probability of default buckets says the the number of customers having low, medium and high POD are 546, 348 and 106 respectively.
+
+```{r}
+
+```
+
+
+
+
+## Codebook
+
+
+
+Variable <br> Name         | Variable <br> Label   | Missing <br> Data| Typical <br> Range |Data <br> Type|Value|Label
+-------------------------------|---------------------------------|---------------------------|----------------|---------|--------|--------------
+Checking Account balance   |Checking_balance       | -                | -                  | Char | -   |-
+Duration of loans in months|months_loan_duration   | -                | 4-72               | Int  | -   |-
+Existing credit history    |existing_credit_history| -                | -                  |Char  | -   |-
+Purpose of loan            |purpose_of_loan        | -                |-                   |Char  | -   |-
+Requested amount of loan   |requested_amount       | -                |250-18424           |Int   | -   |-
+Savings balance            |savings_balance        | -                |-                   |Char  | -   |-
+Length of employment       |employment_length      | -                |-                   | Char | -   |-
+Installment rate           |installment_rate       | -                |                    | Char |1,2,3,4|weekly,bi-weekly,monthly,quarterly
+Personal status            |personal_status        | -                |-                   | Char | -   |-
+Other debtors              |other_debtors          | -                |-                   | Char | -   |-
+Residence history          |residence_history      | -                |1-4                 | Int  | -   |-
+Property                   |Property               | -                |-                   |Char  | -   |-
+Installment plan           |installment_plan       | -                |-                   | Char | -   |-  
+Housing                    |housing                | -                |-                   | Char | -   |-
+Existing loans             |existing_loans         | -                |1-4                 |Int   | -   |- 
+Default in loan            |default                | -                |                    | Char |1,2  | No, Yes
+Number of dependents       |dependents             | -                |1-2                 | Int  | -   |-
+Landline                   |landline               | -                | -                  |Char  | -   |-
+Foreign worker             |foreign_worker         | -                |-                   | Char | -   |-
+Job                        |job                    | -                | -                  | Char | -   |-
+
