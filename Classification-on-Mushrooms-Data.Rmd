@@ -1,0 +1,207 @@
+---
+title: "Classification-Mushroom Data"
+author: "PrabhTalwar"
+date: "2023-05-03"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Classification On Mushroom Dataset
+
+## Loading The Libraries
+
+```{r}
+# Loading the necessary libraries
+
+library(readr)
+library(tidyverse)
+library(visdat)
+library(missMethods)
+library(fastDummies)
+library(caret)
+```
+
+## Loading The Data
+
+```{r}
+mushrooms <- read.csv("mushrooms.csv")
+head(mushrooms, 5)
+```
+
+## Summary
+
+```{r}
+str(mushrooms)
+```
+
+The mushrooms data has 23 variables and 8124 observations and all the variables are categorical so our first step would be to convert all those variables into factor. A categorical variable does not relate to any scale. Machine learning algorithms require numbers as inputs, so if your categorical variable takes on values like "apple", "orange", and "pear", then you need to code it as numbers in some way. as.factor() function provide a way to do this.
+
+
+```{r}
+mushrooms[sapply(mushrooms, is.character)] <- lapply(
+mushrooms[sapply(mushrooms, is.character)], as.factor)
+```
+
+```{r}
+str(mushrooms)
+```
+
+Here, if we see the variable stalk root has observations containing "?" which does not mean anything which means it is a missing data will be replaced by NA's.
+
+## Dealing with missing values
+
+```{r}
+mushrooms$stalk.root[mushrooms$stalk.root=="?"]
+
+#replacing ? with NA's
+mushrooms$stalk.root[mushrooms$stalk.root == "?"] <- NA
+```
+
+```{r}
+summary(mushrooms)
+```
+
+```{r}
+# dealing with missing values
+
+vis_miss(mushrooms)
+```
+
+Here we see 1.3% of the data is missing for the variable stalk root. The solution to the missing data is imputation in other words replacing the missing values with the best guess values. As the missing data values are categorical we cannot use the mean and median approach to impute the missing data. We can use the mode approach to impute the data but we have to check the near zero variance in the data.
+
+Near-Zero Variance variable are those variables that contain only one unique value and does not provide any useful information and should be removed from the data.
+
+## Checking Near-Zero Variance
+
+```{r}
+caret::nearZeroVar(mushrooms, saveMetrics= TRUE) %>%
+  filter(nzv)
+```
+
+The above output shows the three variables that contains near-zero variance and should be removed.
+
+## Removing Near-zero variance variables
+
+```{r}
+mushrooms_new <- mushrooms[,-c(7,11,18)]
+```
+
+## Mode imputaion for missing values
+
+Mode imputation replaces missing values of a categorical variable (in our case it is variable stalk root) by the mode of non-missing values of that variable.
+
+```{r}
+mushrooms_new <- impute_mode(mushrooms_new)
+```
+
+```{r}
+vis_miss(mushrooms_new)
+
+```
+
+Here, no missing data in our data set
+
+```{r}
+ggplot(mushrooms_new, aes(x=class)) + 
+  geom_bar(color = "black", fill = "lightgreen")
+
+```
+
+The above bar chart shows our response variable class where "e" represents edible and "p" represents poisonous. Both the groups are almost equal as edible mushrooms are 52% and the poisonous mushrooms are 48%.
+
+## Converting Categorical Data into Numeric
+
+All the variables in our data are categorical and to deal with it we will be using dummy encoding instead of one-hot encoding as Dummy encoding tends to removes  duplicate categories present in the one-hot encoding. In other words, One hot encoding creates dummy variables that are equal to the number of categories (k) in the variable, whereas dummy encoding uses k-1 dummy variables removing repeating categories.
+
+```{r}
+encoded_mushrooms <- dummy_cols(mushrooms_new, 
+                                select_columns = c("cap.shape", "cap.surface", "cap.color", 
+                                                   "bruises", "odor", "gill.spacing", "gill.size", "gill.color", "stalk.root", "stalk.surface.above.ring", "stalk.surface.below.ring", "stalk.color.above.ring", "stalk.color.below.ring", "veil.type", "ring.number", "ring.type", "spore.print.color", "population", "habitat"), remove_selected_columns = TRUE, remove_first_dummy  = TRUE)
+
+head(encoded_mushrooms)
+
+```
+This is how our encoded mushrooms data looks like.
+
+## Training and Testing set
+
+Dividing the data into training and testing set so that we can check the accuracy of our model. We will train our data on training set and check the accuracy of the model on the testing set to see how well our model performs.
+
+## Data Partition
+
+```{r}
+set.seed(42)
+trn_idx = sample(nrow(encoded_mushrooms), size = trunc(0.70 * nrow(encoded_mushrooms)))
+trn_data = encoded_mushrooms[trn_idx, ]
+tst_data = encoded_mushrooms[-trn_idx, ]
+```
+
+Training Data has 5686 observations and Testing Data has 2438 Observations.
+
+## Choosing the value K
+
+We need to fing the optimal k value as  low values of k typically overfit and large values often underfit.
+
+## KNN Model
+
+Let's build a KNN classifier that we can use to predict Mushrooms edible or poisonous. The KNN algorithm cannot handle categorical variables so we need to encode our data
+
+```{r}
+# Creating a resampling method
+cv <- trainControl(
+  method = "repeatedcv",
+  number = 10,
+  repeats = 5,
+  classProbs = TRUE,
+  summaryFunction = twoClassSummary
+)
+
+# Create a hyperparameter grid search
+hyper_grid <- expand.grid(k = seq(3, 25, by = 2))
+
+```
+
+In the above code we are using repeated cross validation resampling method with 10 number of resampling iterations with 5 fold cross validation. We will get our optimal value for k. Class Probability is TRUE as we are computing a classification model.
+
+
+```{r}
+set.seed(1999)
+
+KNN_Model <- train(class ~ ., data = encoded_mushrooms,
+                   method = "knn",
+                   tuneGrid = hyper_grid,
+                   tuneLength = 20,
+                   trControl = cv,
+                   metric = "ROC")
+
+ggplot(KNN_Model)
+```
+
+In the above code we are tuning our parameters for the classification model.
+
+```{r}
+KNN_Model
+```
+The above plot shows the grid search results and our best model uses 5 nearest neighbors and provided an accuracy of 100%
+
+Now let's look at the important variables in our KNN model
+
+```{r}
+varImp(KNN_Model)
+```
+There are 20 variables comes be important for our model out of encoded 91 variables.
+
+Let's further accsess the model and predict on our test data to see how our model performs.
+
+```{r}
+Prediction <- predict(KNN_Model, newdata = tst_data)
+
+confusionMatrix(Prediction, tst_data$class) 
+
+```
+So overall our model performs well on the test data where 1264 mushrooms are edible, our model also predicts the same. The poisonous mushrooms are 1174 where our model predicts 1173 mushrooms to be poisonous are 1 to be edible that's why our model is 99% accurate.
+
+
