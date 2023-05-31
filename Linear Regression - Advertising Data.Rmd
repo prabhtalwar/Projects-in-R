@@ -1,0 +1,136 @@
+---
+title: "Linear Regression - Advertising Data"
+author: "PrabhTalwar"
+date: "2023-05-24"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# Loading the necessary libraries
+
+library(tidyverse)
+library(ISLR)
+library(readr)
+library(lmtest)
+library(car)
+```
+
+```{r}
+# Loading the data
+advertising <- read_csv("advertising.csv")
+View(advertising)
+```
+
+The advertising data set given in ISLR package, we will analyse the relationship between TV, Radio and Newspaper advertising and sales using a linear regression model.
+
+```{r}
+head(advertising)
+```
+```{r}
+str(advertising)
+```
+```{r}
+summary(advertising)
+```
+
+The advertising dataset has 4 variables and 200 observations where sales is our response variable. All the variables are numeric and there is no missing values in our data set.
+
+```{r}
+# response variable
+hist(advertising$Sales)
+```
+
+Checking of our response variable is normally distributed before building a model and from the above plot we see our response variable sales is somewhat normally distributed.
+
+Let's build a model and run the regression
+
+```{r}
+full_model <- lm(Sales ~ ., data = advertising)
+summary(full_model)
+
+```
+
+The above output is from the full model with all the variables and it tells that TV and Radio are the two sources that generates the sales not the newspaper. RSE for the full model is 1.662 and Adj. R2 is 0.9011
+
+```{r}
+par(mfrow = c(2,2))
+plot(full_model)
+```
+
+Plot 1: The Residual v/s Fitted plot is used to check the linearity and the constant variance assumption. Here, the mean of the residuals are centered at zero so the linearity assumption is valid. The spread of the residuals is same so the constant variance assumption is valid as well.
+
+Plot 2: The Q-Q plot is used to check the normality of the errors. Here, the points closely follows a straight line that suggests that the data comes from a normal distribution. However, there are some data points that make our distribution skewed to the left a little.
+
+Plot 3: The Scale Location plot shows if the residuals are spread equally along the range of predictors. It checks the assumption of constant variance. Here, the residuals appears to be spread randomly. Except the data point 131 and 151.
+
+Plot 4: The Residual v/s Leverage plot helps to find the influential points in a data set. If any data point falls outside of the cook's distance the it is considered to be an influential point. Here, no outliers are detected.
+
+
+To support the above plot the tests have been performed:
+
+Shapiro-Wilk Test: This gives us the value of the test statistic and its p-value.
+The null hypothesis assumes the data were sampled from a normal distribution, thus a small p-value indicates we believe there is only a small probability the data could have been sampled from a normal distribution.
+
+```{r}
+shapiro.test(resid(full_model))
+```
+The p-value for the above test 0.001576 which is less than the alpha value 0.5 which tells us we have have enough evidence to reject the null hypothesis. In other words, data were sampled not from normal distribution. There is still some skewness in the data.
+
+Breusch-Pagan Test:
+There are many tests for constant variance, but here we will perform the Breusch-Pagan Test. 
+H0: Homoscedasticity. The errors have constant variance about the true model.
+HA: Heteroscedasticity.The errors have non-constant variance about the true model.
+
+```{r}
+bptest(full_model)
+```
+
+To check weather the model has homoscedasticity or heteroscedasticity. In the above model, the p-value is not less than 0.05 which states we don'  t have enough evidence to reject the null hypothesis. In other words, we do not reject the null of homoscedasticity.
+
+Overall, the model has constant variance but is no normally distributed and it is slightly skewed to the right.
+
+Lets check the multicollinearity:
+
+Collinearity: It refers to the situation in which two or more variables are closely related. A better way to assess multicollinearity is to use the variation inflation factor (VIF). VIF values larger than 10 are cause for serious concern and in our case all the values are less than 10.
+
+```{r}
+vif(full_model)
+```
+
+The output tells there is no multicollinearity exist in out data.
+
+Now let's run the model with just the significant variables such as TV and Radio.
+
+```{r}
+reduced_model <- lm(Sales ~ TV + Radio, data = advertising)
+summary(reduced_model)
+```
+ RSE for the full model is 1.657 and Adj. R2 is 0.9016. There is no major difference in the full and the reduced model.
+ 
+Now, let's compare the full model with the reduced model. For that we will do a F-test.
+
+The Partial F-Test:
+A partial F-test is used to determine whether or not there is a statistically significant difference between a regression model/full model and some nested version(reduced model) of the same model. A partial F-test essentially tests whether the group of predictors that you removed from the full model are actually useful and need to be included in the full model.
+
+```{r}
+anova(reduced_model, full_model)
+```
+
+From the output we can see that the F test-statistic from the ANOVA is 0.0034 and the corresponding
+p-value is 0.9538. Since this p-value is not less than 0.05, we don't have enough evidence to reject the null hypothesis. In other words, the variables removed from the full model was not significant to improve the model. 
+
+Pros and Cons of going with the reduced model:
+
+Pros: 
+(a). Helps in removing the insignificant variables from the model. 
+(b). Helps in reducing the complexity of the model.
+
+Cons: 
+(a). Removing variables also eliminates the variables which helps in explaining the response variable even it's very less.
+(b) RSE increases as well as the biasness. 
+
+Conclusion: Even thou there is very minor change in our RSE and Adj. R2 the anova table tells us that the variables removed from the full model were not significant to improve the model. Hence, I will go with the reduced model.
