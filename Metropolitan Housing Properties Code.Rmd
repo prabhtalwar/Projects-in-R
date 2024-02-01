@@ -1,0 +1,525 @@
+---
+title: "MetropolitanHousingPropertiesCoding"
+author: "PrabhTalwar"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Appendix
+
+```{r, warning=FALSE, message=FALSE, error=FALSE, echo=FALSE}
+library(tidyverse)
+library(readr)
+library(psych)
+library(gridExtra)
+library(AmesHousing)
+library(psych)
+library(ggplot2)
+library(GGally)
+library(caret)
+library(knitr)
+library(rsample)
+library(recipes)
+library(Metrics)
+library(vip)
+library(gbm) 
+library(randomForest) 
+
+
+options(scipen = 1000)
+
+```
+
+```{r, warning=FALSE, message=FALSE, error=FALSE}
+#reading the data
+housing <- AmesHousing::make_ames()
+```
+
+```{r}
+#top few rows of the data
+head(housing,3)
+```
+
+## Glimpse of the data
+
+Here, we see the glimpse of our data. Some of the variables are factors and some are numerical.
+
+```{r}
+glimpse(housing)
+```
+
+## 5-Number Summary Statistics 
+
+We are going to see the distribution of our data by diving into the summary of the data. By looking at the output of the summary of the data, we can see that there are no NA's in the data, so there will be no need of imputing the data. Also, we can see the various levels of our categorical variables in the summary like MS subclass, MS Zoning, Alley and many more. Upon analyzing the numerical data, we can see skewness in some variables like lot area, lot frontage and sale price as well.
+
+```{r}
+summary(housing, head(2))
+```
+
+```{r}
+
+g1 <- ggplot(housing, aes(x = Lot_Shape))+
+  geom_bar(fill='steelblue3') +
+  theme(axis.text.x=element_text(angle = 30, vjust = 0.5)) +
+  labs(x = "Lot Shape")
+
+g2 <- ggplot(housing, aes(x = Lot_Config))+
+  geom_bar(fill='steelblue3') +
+  labs(x = "Lot Configuration")
+
+g3 <- ggplot(housing, aes(x = Condition_1))+
+  geom_bar(fill='steelblue3') +
+  theme(axis.text.x=element_text(angle = 30, vjust = 0.5)) +
+  labs(x = "Condition")
+
+g4 <- ggplot(housing, aes(x = Bldg_Type))+
+  geom_bar(fill='steelblue3') +
+  labs(x = "Building Type")
+
+g5 <- ggplot(housing, aes(x = House_Style))+
+  geom_bar(fill='steelblue3') +
+  theme(axis.text.x=element_text(angle = 60, vjust = 0.5)) +
+  labs(x = "House Style")
+
+g6 <- ggplot(housing, aes(x = Roof_Style))+
+  geom_bar(fill='steelblue3') +
+  labs("Roof Style")
+
+g7 <- ggplot(housing, aes(x = Mas_Vnr_Type))
+  geom_bar(fill='steelblue3')
+
+g8 <- ggplot(housing, aes(x = Exter_Qual)) +
+  geom_bar(fill='steelblue3') +
+  labs("Exterior Quality")
+
+g9 <- ggplot(housing, aes(x = Exter_Cond))+
+  geom_bar(fill='steelblue3')
+
+g10 <- ggplot(housing, aes(x = Foundation))+
+  geom_bar(fill='steelblue3') +
+  labs("Foundation")
+
+g11 <- ggplot(housing, aes(x = Bsmt_Qual))+
+  geom_bar(fill='steelblue3') +
+  theme(axis.text.x=element_text(angle = 30, vjust = 0.5))
+
+g12 <- ggplot(housing, aes(x = Bsmt_Exposure))+
+  geom_bar(fill='steelblue3')
+
+g13 <- ggplot(housing, aes(x = BsmtFin_Type_1))+
+  geom_bar(fill='steelblue3') +
+  theme(axis.text.x=element_text(angle = 30, vjust = 0.5))
+
+g14 <- ggplot(housing, aes(x = Heating_QC))+
+  geom_bar(fill='steelblue3')
+
+g15 <- ggplot(housing, aes(x = Central_Air))+
+  geom_bar(fill='steelblue3')
+
+g16 <- ggplot(housing, aes(x = Electrical))+
+  geom_bar(fill='steelblue3')
+
+g17 <- ggplot(housing, aes(x = Kitchen_Qual))+
+  geom_bar(fill='steelblue3')
+
+g18 <- ggplot(housing, aes(x = Fireplace_Qu))+
+  geom_bar(fill='steelblue3') +
+  theme(axis.text.x=element_text(angle = 30, vjust = 0.5))
+
+g19 <- ggplot(housing, aes(x = Garage_Type))+
+  geom_bar(fill='steelblue3') +
+  theme(axis.text.x=element_text(angle = 60, vjust = 0.5))
+
+g20 <- ggplot(housing, aes(x = Garage_Finish))+
+  geom_bar(fill='steelblue3')
+
+g21 <- ggplot(housing, aes(x = Garage_Qual))+
+  geom_bar(fill='steelblue3')
+
+g22 <- ggplot(housing, aes(x = Garage_Cond))+
+  geom_bar(fill='steelblue3')
+
+g23 <- ggplot(housing, aes(x = Paved_Drive))+
+  geom_bar(fill='steelblue3')
+
+g24 <- ggplot(housing, aes(x = Fence))+
+  geom_bar(fill='steelblue3') +
+  theme(axis.text.x=element_text(angle = 30, vjust = 0.5))
+
+g25 <- ggplot(housing, aes(x = Sale_Type))+
+  geom_bar(fill='steelblue3') +
+  theme(axis.text.x=element_text(angle = 30, vjust = 0.5))
+
+g26 <- ggplot(housing, aes(x = Sale_Condition))+
+  geom_bar(fill='steelblue3')
+
+g27 <- ggplot(housing, aes(x = Kitchen_Qual))+
+  geom_bar(fill='steelblue3')
+
+g28 <- ggplot(housing, aes(x = Kitchen_Qual))+
+  geom_bar(fill='steelblue3')
+
+g29 <- ggplot(housing, aes(x = MS_SubClass))+
+  geom_bar(fill='steelblue3')+
+  coord_flip()
+
+g30 <- ggplot(housing, aes(x = MS_Zoning))+
+  geom_bar(fill='steelblue3')+
+  coord_flip()
+
+g31 <- ggplot(housing, aes(x = Exterior_1st))+
+  geom_bar(fill='steelblue3')+
+  coord_flip()
+
+g32 <- ggplot(housing, aes(x = Exterior_2nd))+
+  geom_bar(fill='steelblue3')+
+  coord_flip()
+
+g33 <- ggplot(housing, aes(x = Neighborhood))+
+  geom_bar(fill='steelblue3')+
+  coord_flip()
+
+grid.arrange(g1, g3, ncol = 1, nrow = 2)
+grid.arrange(g5, g11, ncol = 1, nrow = 2)
+grid.arrange(g13, g18, ncol = 1, nrow = 2)
+grid.arrange(g19, g24, ncol = 1, nrow = 2)
+grid.arrange(g2, g4,  ncol = 1, nrow = 2)
+grid.arrange(g6, g12, ncol = 1, nrow = 2)
+grid.arrange(g7, g8,  ncol = 1, nrow = 2)
+grid.arrange(g9, g10, ncol = 1, nrow = 2)
+grid.arrange(g14, g15, ncol = 1, nrow = 2)
+grid.arrange(g16, g17, ncol = 1, nrow = 2)
+grid.arrange(g20, g21,ncol = 1, nrow = 2)
+grid.arrange(g22, g23, ncol = 1, nrow = 2)
+grid.arrange(g25, g26, ncol = 1, nrow = 2)
+grid.arrange(g27, ncol = 1, nrow = 2)
+grid.arrange(g28, ncol = 1, nrow = 2)
+grid.arrange(g29, g30,  ncol = 1, nrow = 2)
+grid.arrange(g31, g32, ncol = 1, nrow = 2)
+grid.arrange(g3, g11, ncol = 1, nrow = 2)
+
+```
+
+
+
+```{r}
+ggplot(data=housing,mapping = aes(x=Gr_Liv_Area,y=Sale_Price))+
+  geom_point()+
+  geom_smooth(method = "lm")
+```
+
+
+```{r}
+ggplot(data=housing,mapping = aes(x=Total_Bsmt_SF ,y=Sale_Price))+
+  geom_point()
+```
+
+
+
+```{r}
+ggplot(data=housing,mapping = aes(x=Garage_Area,y=Sale_Price))+
+  geom_point()
+```
+
+## Preprocessing of the data
+
+
+This is a histogram of the sale prices of our Chicago properties. We can see that some properties have really high sale prices which are skewing the histogram of sale price. In order to improve the predictive performance of our model, we will do the log transformation of the sale price of the houses in order to make them normally distributed. QQplot also confirms the skewness in sale price of the houses. We can see the deviations of the sale prices from the qqline which signifies that sale price is not normally distributed.
+
+```{r}
+par(mfrow=c(1,2))
+hist(housing$Sale_Price,xlab = "Sale Price",main=" Histogram of Sale Price")
+qqnorm(housing$Sale_Price,pch = 1, frame = FALSE)
+qqline(housing$Sale_Price, col = "steelblue", lwd = 2)
+```
+
+## Transforming the sale price 
+
+```{r}
+par(mfrow=c(1,2))
+hist(log(housing$Sale_Price),xlab = "Sale Price",
+     main=" Histogram of Sale Price")
+qqnorm(log(housing$Sale_Price),pch = 1, frame = FALSE)
+qqline(log(housing$Sale_Price), col = "steelblue", lwd = 2)
+```
+
+
+
+```{r}
+ggplot(housing, aes(Year_Built, Sale_Price)) + 
+  geom_point(size = 1, alpha = .4) + 
+  geom_smooth(method = "lm", se = FALSE) +
+  scale_y_log10("Sale price", labels = scales::dollar, 
+                breaks = seq(0, 400000, by = 100000)) +
+  xlab("Year built") +
+  ggtitle(paste("Transforming variables can provide a near-linear relationship."))
+```
+
+## Selecting the variables via Correlation
+
+As, we saw there are 80 variables in the data set. We cannot include all of them in model as some of them are categorical which need encoding and that would make the dimension of the dataset high which might result in to multicollinearity.
+
+So, we will try selecting some variables which might help us in predicting the sale price of the house.  We will use linear correlation technique to determine the variables having strong correlation with the sale price.
+
+```{r}
+#selecting numeric variables
+num_cols <- unlist(lapply(housing, is.numeric))# Identify numeric columns
+#correlation matrix of numerical variables
+correlations <- cor(housing[ , num_cols])
+#variables having correlation greater than 0.5
+imp_correations <- correlations>0.5
+```
+
+From the correlation matrix, we got to know the important variables which affect the sale price of the house significantly.
+
+FRom the output, we can see that sale price is highly correlated with both garage area and garage cars as we saw that above in the scatterplot. Also, ground living area plays a important role in determining the sale price of the house.
+
+```{r}
+pairs.panels(housing[,c("Year_Built","Year_Remod_Add","Mas_Vnr_Area",
+"Total_Bsmt_SF","First_Flr_SF","Gr_Liv_Area","Full_Bath","Garage_Cars","Garage_Area",
+"Sale_Price")])
+    
+```
+
+## Model Building 
+
+Now, we have some factors  which affect the sale price of the house and we will be using them  to predict the sale price of the house.
+
+## Splitting the data
+
+```{r}
+#setting the seed 
+set.seed(123)
+#splitting the data
+chicago_split <- initial_split(data = housing,split=0.7,strata=Sale_Price)
+#training set
+Chicago_train <- training(chicago_split)
+#testing set
+Chicago_test <- testing(chicago_split)
+```
+
+## preprocessing steps
+
+In the pairs.panels(), we saw some variables were having nearly correlation with the sale price of the house, so we selected some variables out of them which explains independently sale price of the house As, it is  redundant to keep the variable which are doing the same job in explaining the target variable. 
+
+Selected variables were: 
+
+* Year built: Date the house was built \newline
+* Total basement: Total square feet of basement area \newline
+* Ground living area \newline
+* Garage Area: Size of garage 
+
+ 
+We will log transform our response variable as discussed earlier, center and scale the data in order to have same scale of the variables.
+
+```{r}
+Chicago_blueprint <- recipe(Sale_Price~Year_Built+Total_Bsmt_SF+Gr_Liv_Area+
+                              Garage_Area, 
+                            data = Chicago_train) %>%
+  step_log(all_outcomes())%>%
+  step_center(all_numeric(), -all_outcomes()) %>%
+  step_scale(all_numeric(), -all_outcomes()) 
+
+```
+
+
+```{r}
+#preparing the data
+prepare_chicago <- prep(Chicago_blueprint, training = Chicago_train)
+#baking the data
+baked_chicago <- bake(prepare_chicago, new_data = Chicago_train)
+```
+
+## Cross Validating the model 
+
+Cross validation is the technique where we select the paramters of the model by training and testing the data on different folds of the data. K-fold cross validation will divide the data in to 10 folds and will use one fold for validating the model and use remaining folds to train the data. This will let us know how our model will perform in future. 
+
+We will include preprocessing steps as well during cross validating the model.
+
+```{r}
+cv <- trainControl(
+  method = "repeatedcv", 
+  number = 10, 
+  repeats = 5
+)
+
+#Building the cross validated model
+lm_model<- train(Chicago_blueprint,
+  data = Chicago_train, 
+  method = "lm", 
+  trControl = cv
+)
+```
+
+
+From the output of the model, we can see that our model has been repeatedly cross validated and has an R square of 74% meaning our variables explain 74 percent of the variability in the sale price of a house. Our residuals also look normally distributed from 5 summary statistics.
+
+AAll the varibles turns out ot be significant in predicting sale price of the house. And, overall p value of the model is also significant. RMSE of the model is 0.211 which means our model will mispredict the sale price of the house price on average by 0.211. This RMSE is right now on log scale, we will convert it back on normal scale for interpretation.
+
+
+```{r}
+lm_model
+summary(lm_model)
+```
+
+## Diagnostic plots
+
+Here we will test or linear model assumptions. 
+
+1st plot: In the first plot, we can see random pattern in our errors. There is homoscedasticity in our error plot. There is a bit non linearity in our data.
+2nd plot: This plot is used to check the normality of our errors. We can see little bit right skewness in our data. Overall, it is normalish.
+3rd plot: This plot also checks the randomness in our errors. Turns out, there is no pattern observed in the plot. 
+4th plot: This plot is used to check the outliers in our data. 1537 and 1328 observation were turned out to be outliers which have to be diagnosed in order to see if they are problematic for us.
+
+```{r}
+par(mfrow = c(2,2))
+plot(lm_model$finalModel)
+```
+
+## Testing the model
+
+We will do same preprocessing steps on our test data, as we did on our training data. And, then we will bake our data and use it for testing the model. 
+
+
+
+```{r}
+baked_chicagotest <- bake(prepare_chicago, new_data = Chicago_test)
+```
+
+
+From the output, we can see that our model on average will predict the sale prices of the houses off by $198,953.
+
+```{r}
+predict_chicagotest <- predict(lm_model,baked_chicagotest)
+
+rmse(Chicago_test$Sale_Price, predict_chicagotest)
+```
+
+This is variable importance plot where we can see which variables plays an important role in model in predicting sale price of the houses. Most important variable comes out to be ground living area which plays most important role in determining sale price of the house followed by year built, total basement square footage and 
+
+
+```{r}
+vip(lm_model)
+```
+
+
+## Random Forest
+
+
+```{r}
+set.seed(123)
+ind <- sample(2, nrow(housing), replace = TRUE, prob = c(0.7, 0.3))
+train <- housing[ind==1,]
+test <- housing[ind==2,]
+```
+
+```{r}
+model <- randomForest(Sale_Price ~ ., data = train, proximity = TRUE)
+
+model
+```
+
+The random forest is build to predict the sales price
+and uses regression. The number of trees used by default by the model is 500. For further analysis we will be checking to see if 500 trees is enough for optimal regression. The models tells the number of variables that were consider at each split i.e. 26. Regression trees have a default setting of the number of variables divided by 3. As, we don't know if 26 is the best value, we will fiddle with this parameter later on.
+
+```{r}
+sqrt(668054861)
+```
+
+Here is the MSE is 668054861. And the RMSE is 25846.76 The % variance explained by the model is a measure of how well OOB predictions explain the target variance of the training set which is 89.46 % in our case. It means the goodness of the outside prediction explained targeted variance in the training data set.
+
+To test this hypothesis, we will make a random forest with 1000 trees
+
+```{r}
+model1 <- randomForest(Sale_Price ~ ., data = housing, ntree = 1000, proximity = TRUE)
+
+model1
+```
+
+```{r}
+sqrt(588928625)
+```
+
+Here is the MSE is 588928625 And the RMSE is 24267.85 The % variance explained by the model is a measure of how well OOB predictions explain the target variance of the training set which is 90.77 % in our case. It means the goodness of the outside prediction explained targeted variance in the training data set. Ther is not much difference in RMSE by increasing number of trees.
+
+```{r}
+RMSE <- sqrt(model1$mse)
+
+hist(RMSE)
+```
+
+Currently, the best random forest model we have found uses mtry = 26, terminal node size of 26 observations, and a sample size of 80%. We see that our expected error ranges between 24000 to 26000
+
+
+```{r}
+vip_m <- vip::vip(model, num_features = 25, importance  = TRUE)
+
+
+vip_m1 <- vip::vip(model1, num_features = 25, importance  = TRUE)
+
+gridExtra::grid.arrange(vip_m, vip_m1, nrow = 1)
+```
+
+Here, are the Top 25 Important Variables from two models. Some of the variables are common in both of them like "Overall_Qual", "Neighborhood", "Gr_Liv_Area", "Garage_Area", etc.
+
+## Gradient boost for regression
+
+When gradient boost is used to predict the continuous variable, it is called gradient boost for regression, which in this case is sale price. Gradient boost builds decision tree based on the errors of previous tree and then scales the results and continues to build the tree until adding additional trees significantly reduce the size of the residuals.
+
+Firstly, it is going to predict the average sale price of the houses and then it builds the tree based on errors from first tree. The errors from previous trees were difference of observed values and predicted values. A new tree is made using all predictors to predict the residuals from previous tree. Learning rate in this model plays an important role in scaling the tree. It takes step in right direction in order to reduce the error. gradient boost will continously improve on errors made by previous tree until adding other trees reduce the error rate in predicting the sale price of the house.
+
+## Building gradient boost regression model
+
+We will gradient boost model to predict the sale price of the house using 5000 trees and will cross validate the model using 10 fold cross validation.
+
+```{r}
+set.seed(123)  # for reproducibility
+chicago_gbm <- gbm(
+  formula = Sale_Price ~ .,
+  data = Chicago_train,
+  distribution = "gaussian",  # SSE loss function
+  n.trees = 5000,
+  shrinkage = 0.1,
+  interaction.depth = 3,
+  n.minobsinnode = 10,
+  cv.folds = 10
+)
+```
+
+
+```{r}
+# find index for number trees with minimum CV error
+best <- which.min(chicago_gbm$cv.error)
+```
+
+```{r}
+sqrt(chicago_gbm$cv.error[best])
+```
+
+Here, we see our model used 893 trees in order to predict the sale price of the house and our predictions for sale price will go off by 23000 on average, which is significant improvement in comparison to other model results.
+
+```{r}
+gbm.perf(chicago_gbm, method = "cv")
+```
+
+## Feature Importance
+
+We can check here which variables were most important in determining sale price of the houses from top to bottom in descending order. Most important varaible turns out to be over all quality of the house, neighborhood, ground living area, nd so on.
+
+```{r}
+vip(chicago_gbm)
+```
+
+## Predicting the sale price using gbm model
+
+We will make predictions on new data using our gbm model. As, we were having labelled data so we can check the error rate off model on unseen data. So, RMSE on the test data was nearly 20000 using 893 trees.
+
+```{r}
+chicago_predict_gbm <- predict(chicago_gbm,Chicago_test)
+rmse(Chicago_test$Sale_Price,chicago_predict_gbm)
+```
+
