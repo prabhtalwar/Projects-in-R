@@ -1,0 +1,49 @@
+---
+title: "Airbnb_Dataset"
+author: "PrabhTalwar"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(readr)
+library(visdat)
+library(VIM)
+```
+
+```{r}
+Airbnb_Dataset <- read_csv("Airbnb_Dataset.csv")
+head(Airbnb_Dataset)
+```
+```{r}
+Airbnb_Dataset[sapply(Airbnb_Dataset, is.character)] <- lapply(
+  Airbnb_Dataset[sapply(Airbnb_Dataset, is.character)], as.factor)
+
+str(Airbnb_Dataset)
+```
+
+
+
+```{r}
+vis_miss(Airbnb_Dataset)
+```
+
+```{r}
+#KNN-IMPUTATIN
+
+Airbnb <- kNN(Airbnb_Dataset, variable = c("rating", "price"), k =7)
+
+summary(Airbnb)
+```
+
+```{r}
+?write.csv
+getwd()
+write.csv(Airbnb, file = "Airbnb.csv")
+```
+
